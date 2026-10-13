@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+results/*.json
+!results/.gitkeep
+*.log
+*.tmp

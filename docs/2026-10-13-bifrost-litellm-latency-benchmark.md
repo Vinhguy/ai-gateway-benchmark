@@ -85,7 +85,7 @@
 - [x] Enforce complete workload shape, all three resource evidence sources, 99.9% success, zero drops, resource limits, version metadata, and p95 drift for comparison acceptance.
 - [x] Keep raw result JSON and CSV out of Git; no aggregate trial report exists yet.
 - [x] Perform a fresh whole-workspace review and resolve critical/important findings; normalize malformed mixed-timezone resource timestamps safely.
-- [ ] Copy into `C:\code\vnm\ai-gateway-benchmark`, create the public GitHub repository, and push branch `benchmark-setup` (user requested publication).
+- [x] Clone into `C:\code\vnm\ai-gateway-benchmark` and push branch `benchmark-setup` to the public repository [Vinhguy/ai-gateway-benchmark](https://github.com/Vinhguy/ai-gateway-benchmark); verified remote SHA `9d60c9835328c2ef8d1720610293b9c568b3e1da`.
 
 ## Assumptions
 

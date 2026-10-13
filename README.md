@@ -2,6 +2,8 @@
 
 Compare Bifrost and LiteLLM against the same zero-latency mock provider. The load generator sends direct HTTP requests from native Windows Python; it does not use k6.
 
+Public repository: [Vinhguy/ai-gateway-benchmark](https://github.com/Vinhguy/ai-gateway-benchmark), branch `benchmark-setup`.
+
 ## Workload definition
 
 - 5,000 async user workers represent the user population.

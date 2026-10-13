@@ -78,13 +78,13 @@
 
 **Files:** `docs/benchmark-method.md`, `results/.gitkeep`, updates to `README.md`, `client/report.py`, report-validity tests.
 
-**Recorded dimensions:** gateway, configured VU population, max/observed in-flight requests, run ID, version pins, p50/p95/p99, RPS, successes/failures, queue/admission delays, and Windows/VM/container CPU/RAM.
+**Recorded dimensions:** gateway, configured VU population, max/observed in-flight requests, run ID, version pins, p50/p95/p99, hold-window and drain-inclusive RPS, successes/failures by hold/drain, queue/admission delays, and Windows/VM/container CPU/RAM.
 
 - [x] Add report validity tests: low-memory abort, memory-cap event, generator saturation, and dropped work mark a run invalid.
 - [x] Document the direct-mocker baseline, gateway order, sustained trials, and comparison acceptance rules. **Deferred:** actual trials require the user's Windows server and local machine.
 - [x] Enforce complete workload shape, all three resource evidence sources, 99.9% success, zero drops, resource limits, version metadata, and p95 drift for comparison acceptance.
 - [x] Keep raw result JSON and CSV out of Git; no aggregate trial report exists yet.
-- [ ] Perform a fresh whole-workspace review and resolve any critical/important findings.
+- [x] Perform a fresh whole-workspace review and resolve critical/important findings; normalize malformed mixed-timezone resource timestamps safely.
 - [ ] Copy into `C:\code\vnm\ai-gateway-benchmark`, create the public GitHub repository, and push branch `benchmark-setup` (user requested publication).
 
 ## Assumptions

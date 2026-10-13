@@ -7,6 +7,7 @@ def valid_result():
         "gateway_version": "v2.2.6",
         "mocker_commit": "2c416fb234bf4abac25cf61f4470fc2528362afd",
         "profile": "burst",
+        "duration_seconds": 2,
         "configured_vus": 5000,
         "max_in_flight_limit": 1000,
         "observed_max_in_flight": 1000,
@@ -18,9 +19,18 @@ def valid_result():
 
 def resource_rows():
     return (
-        [{"host_available_mb": "3500", "process_private_mb": "600", "cpu_cores_used": "4"}],
-        [{"linux_mem_available_kb": "3000000", "container": "gateway", "cpu_percent": "5%", "memory_usage": "4000MiB / 6GiB"}],
-        [{"host_available_mb": "3500"}],
+        [
+            {"timestamp_utc": "2026-10-13T10:00:00+00:00", "host_available_mb": "3500", "process_private_mb": "600", "cpu_cores_used": "4"},
+            {"timestamp_utc": "2026-10-13T10:00:02+00:00", "host_available_mb": "3500", "process_private_mb": "600", "cpu_cores_used": "4"},
+        ],
+        [
+            {"timestamp_utc": "2026-10-13T10:00:00+00:00", "linux_mem_available_kb": "3000000", "container": "gateway", "cpu_percent": "5%", "memory_usage": "4000MiB / 6GiB"},
+            {"timestamp_utc": "2026-10-13T10:00:02+00:00", "linux_mem_available_kb": "3000000", "container": "gateway", "cpu_percent": "5%", "memory_usage": "4000MiB / 6GiB"},
+        ],
+        [
+            {"timestamp_utc": "2026-10-13T10:00:00+00:00", "host_available_mb": "3500"},
+            {"timestamp_utc": "2026-10-13T10:00:02+00:00", "host_available_mb": "3500"},
+        ],
     )
 
 
@@ -86,3 +96,20 @@ def test_server_host_memory_floor_is_checked():
         [{"host_available_mb": "1900"}],
     )
     assert "server_host_available_below_2_gib" in report["reasons"]
+
+
+def test_single_resource_sample_cannot_validate_a_ten_minute_run():
+    result = valid_result()
+    result.update(profile="sustained", duration_seconds=600, latency_p95_drift_percent=1)
+    timestamp = "2026-10-13T10:00:00+00:00"
+    report = validate_result(
+        result,
+        [{"timestamp_utc": timestamp, "host_available_mb": "4000", "process_private_mb": "500", "cpu_cores_used": "2"}],
+        [{"timestamp_utc": timestamp, "linux_mem_available_kb": "3000000", "cpu_percent": "10%", "memory_usage": "100MiB / 6GiB"}],
+        [{"timestamp_utc": timestamp, "host_available_mb": "4000"}],
+    )
+    assert {
+        "incomplete_client_resource_coverage",
+        "incomplete_guest_resource_coverage",
+        "incomplete_server_host_resource_coverage",
+    }.issubset(report["reasons"])

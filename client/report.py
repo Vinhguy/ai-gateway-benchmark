@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,30 @@ def _memory_mb(value: str) -> float | None:
              "MB": 1, "MIB": 1, "GB": 1024, "GIB": 1024,
              "TB": 1024 * 1024, "TIB": 1024 * 1024}
     return amount * scale[unit]
+
+
+def _has_resource_coverage(rows: list[dict[str, Any]] | None, duration_seconds: float) -> bool:
+    if not rows:
+        return False
+    timestamps = []
+    for row in rows:
+        value = str(row.get("timestamp_utc", "")).strip()
+        if not value:
+            continue
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            timestamps.append(parsed.replace(tzinfo=timezone.utc) if parsed.tzinfo is None else parsed)
+        except ValueError:
+            continue
+    unique_timestamps = sorted(set(timestamps))
+    required_samples = max(1, math.ceil(duration_seconds * 0.8))
+    if len(unique_timestamps) < required_samples:
+        return False
+    if duration_seconds >= 2:
+        span_seconds = (unique_timestamps[-1] - unique_timestamps[0]).total_seconds()
+        if span_seconds < duration_seconds * 0.8:
+            return False
+    return True
 
 
 def validate_result(
@@ -67,20 +93,32 @@ def validate_result(
     if result.get("mocker_commit") in (None, "", "unknown"):
         reasons.add("missing_mocker_commit")
 
-    if not client_rows or not any(
-        all(_number(row, key) is not None for key in ("host_available_mb", "process_private_mb", "cpu_cores_used"))
-        for row in client_rows
-    ):
+    duration = float(result.get("duration_seconds", 0))
+    client_samples = [
+        row for row in client_rows or []
+        if all(_number(row, key) is not None for key in ("host_available_mb", "process_private_mb", "cpu_cores_used"))
+    ]
+    if not client_samples:
         reasons.add("missing_client_resource_samples")
-    if not server_rows or not any(
+    elif not _has_resource_coverage(client_samples, duration):
+        reasons.add("incomplete_client_resource_coverage")
+    guest_samples = [
+        row for row in server_rows or []
+        if (
         _number(row, "linux_mem_available_kb") is not None
         and row.get("cpu_percent")
         and row.get("memory_usage")
-        for row in server_rows
-    ):
+        )
+    ]
+    if not guest_samples:
         reasons.add("missing_guest_resource_samples")
-    if not server_host_rows or not any(_number(row, "host_available_mb") is not None for row in server_host_rows):
+    elif not _has_resource_coverage(guest_samples, duration):
+        reasons.add("incomplete_guest_resource_coverage")
+    server_host_samples = [row for row in server_host_rows or [] if _number(row, "host_available_mb") is not None]
+    if not server_host_samples:
         reasons.add("missing_server_host_resource_samples")
+    elif not _has_resource_coverage(server_host_samples, duration):
+        reasons.add("incomplete_server_host_resource_coverage")
 
     for row in client_rows or []:
         available = _number(row, "host_available_mb")

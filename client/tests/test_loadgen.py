@@ -120,7 +120,8 @@ def test_sustained_profile_never_exceeds_inflight_cap_and_drains_responses():
             assert summary["latency_p95_first_half_ms"] is not None
             assert summary["latency_p95_final_half_ms"] is not None
             assert summary["latency_p95_drift_percent"] is not None
-            assert summary["rps"] == round(summary["completed"] / summary["duration_seconds"], 3)
+            in_window_total = summary["completed_in_measurement_window"] + summary["failed_in_measurement_window"]
+            assert summary["rps"] == round(in_window_total / summary["duration_seconds"], 3)
             result_path = Path(__file__).parent / "sustain-test-result.json"
             module.write_result(summary, "sustain-test", result_path)
             report = json.loads(result_path.read_text(encoding="utf-8"))
@@ -173,6 +174,11 @@ def test_sustained_measurement_window_excludes_request_drain_time():
                 summary = await load.run_sustained(0.03)
             assert 0.025 <= summary["duration_seconds"] < 0.08
             assert summary["completed"] > 0
+            assert summary["completed_during_drain"] > 0
+            assert summary["completed"] == (
+                summary["completed_in_measurement_window"] + summary["completed_during_drain"]
+            )
+            assert summary["rps"] < summary["drain_inclusive_rps"]
         finally:
             await app_runner.cleanup()
 

@@ -82,6 +82,10 @@ class Metrics:
     started_at: float = field(default_factory=time.perf_counter)
     completed: int = 0
     failed: int = 0
+    completed_in_window: int = 0
+    failed_in_window: int = 0
+    completed_during_drain: int = 0
+    failed_during_drain: int = 0
     http_errors: int = 0
     network_errors: int = 0
     admission_delayed: int = 0
@@ -124,6 +128,7 @@ class Metrics:
         succeeded: bool,
         network_error: bool = False,
         time_window: str | None = None,
+        in_measurement_window: bool = True,
     ) -> None:
         self._in_flight -= 1
         self._latency_observations += 1
@@ -135,8 +140,16 @@ class Metrics:
             self._sample(window_samples, latency_ms, window_count)
         if succeeded:
             self.completed += 1
+            if in_measurement_window:
+                self.completed_in_window += 1
+            else:
+                self.completed_during_drain += 1
         else:
             self.failed += 1
+            if in_measurement_window:
+                self.failed_in_window += 1
+            else:
+                self.failed_during_drain += 1
             if network_error:
                 self.network_errors += 1
             else:
@@ -150,12 +163,20 @@ class Metrics:
         index = max(0, math.ceil(percentile * len(ordered)) - 1)
         return round(ordered[index], 3)
 
-    def summary(self, *, profile: str, duration_seconds: float | None = None) -> dict[str, Any]:
+    def summary(
+        self,
+        *,
+        profile: str,
+        duration_seconds: float | None = None,
+        duration_drain_seconds: float = 0,
+    ) -> dict[str, Any]:
         elapsed = duration_seconds if duration_seconds is not None else time.perf_counter() - self.started_at
         elapsed = round(max(elapsed, 1e-9), 6)
         latencies = self._latency_samples_ms
         admission = self._admission_samples_ms
         total = self.completed + self.failed
+        in_window_total = self.completed_in_window + self.failed_in_window
+        full_elapsed = elapsed + max(0.0, duration_drain_seconds)
         first_p95 = self._percentile(self._window_latency_samples_ms.get("first_half", []), 0.95)
         final_p95 = self._percentile(self._window_latency_samples_ms.get("final_half", []), 0.95)
         drift = None
@@ -174,11 +195,17 @@ class Metrics:
             "duration_seconds": elapsed,
             "completed": self.completed,
             "failed": self.failed,
+            "completed_in_measurement_window": self.completed_in_window,
+            "failed_in_measurement_window": self.failed_in_window,
+            "completed_during_drain": self.completed_during_drain,
+            "failed_during_drain": self.failed_during_drain,
+            "drain_seconds": round(max(0.0, duration_drain_seconds), 6),
             "http_errors": self.http_errors,
             "network_errors": self.network_errors,
             "dropped": self.dropped,
             "admission_delayed": self.admission_delayed,
-            "rps": round(total / elapsed, 3),
+            "rps": round(in_window_total / elapsed, 3),
+            "drain_inclusive_rps": round(total / full_elapsed, 3),
             "success_rate": round(self.completed / total, 6) if total else 0.0,
             "latency_sample_count": len(latencies),
             "latency_percentile_method": "uniform reservoir sample, max 50000 observations",
@@ -208,6 +235,7 @@ class LoadGenerator:
         self._session: aiohttp.ClientSession | None = None
         self._sustained_started_at: float | None = None
         self._sustained_split_seconds: float | None = None
+        self._sustained_duration_seconds: float | None = None
 
     async def __aenter__(self) -> LoadGenerator:
         connector = aiohttp.TCPConnector(
@@ -269,11 +297,16 @@ class LoadGenerator:
                 time_window = None
                 if request_elapsed is not None and self._sustained_split_seconds is not None:
                     time_window = "first_half" if request_elapsed <= self._sustained_split_seconds else "final_half"
+                in_measurement_window = (
+                    self._sustained_duration_seconds is None
+                    or time.perf_counter() - self._sustained_started_at <= self._sustained_duration_seconds
+                )
                 self.metrics.end_request(
                     latency_ms=latency_ms,
                     succeeded=succeeded,
                     network_error=network_error,
                     time_window=time_window,
+                    in_measurement_window=in_measurement_window,
                 )
             return succeeded
 
@@ -297,6 +330,7 @@ class LoadGenerator:
         measurement_started = time.perf_counter()
         self._sustained_started_at = measurement_started
         self._sustained_split_seconds = duration_seconds / 2
+        self._sustained_duration_seconds = duration_seconds
 
         async def user_loop(worker_id: int) -> None:
             rng = random.Random(f"{self.config.run_id}:{worker_id}")
@@ -325,8 +359,13 @@ class LoadGenerator:
             measurement_ended = time.perf_counter()
             stop_event.set()
             await asyncio.gather(*workers)
+        drain_ended = time.perf_counter()
         # Drain in-flight requests for clean shutdown, but do not add that drain time to the hold window.
-        return self.metrics.summary(profile="sustained", duration_seconds=measurement_ended - measurement_started)
+        return self.metrics.summary(
+            profile="sustained",
+            duration_seconds=measurement_ended - measurement_started,
+            duration_drain_seconds=drain_ended - measurement_ended,
+        )
 
 
 def write_result(summary: dict[str, Any], run_id: str, output_path: Path) -> None:

@@ -42,6 +42,16 @@ Describe 'Server gateway benchmark configuration' {
         (Test-Path (Join-Path $repoRoot 'windows\Watch-BenchmarkVm.ps1')) | Should Be $true
     }
 
+    It 'includes a Hyper-V VM cap preflight' {
+        $preflight = Join-Path $repoRoot 'windows\Test-BenchmarkVm.ps1'
+        (Test-Path $preflight) | Should Be $true
+        . $preflight -VmName 'test'
+        { Assert-BenchmarkVmLimits -MemoryMaximumBytes 9GB -ProcessorCount 9 -HostAvailableKb 3000000 } | Should Throw
+        { Assert-BenchmarkVmLimits -MemoryMaximumBytes 8GB -ProcessorCount 10 -HostAvailableKb 3000000 } | Should Throw
+        { Assert-BenchmarkVmLimits -MemoryMaximumBytes 8GB -ProcessorCount 9 -HostAvailableKb 1000000 } | Should Throw
+        { Assert-BenchmarkVmLimits -MemoryMaximumBytes 8GB -ProcessorCount 9 -HostAvailableKb 3000000 } | Should Not Throw
+    }
+
     It 'powers off the benchmark VM when Windows host memory is below 2 GiB' {
         $hostGuard = Join-Path $repoRoot 'windows\Watch-BenchmarkVm.ps1'
         . $hostGuard

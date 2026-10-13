@@ -154,3 +154,26 @@ def test_sustained_profile_represents_5000_workers_without_exceeding_cap():
         assert summary["observed_max_in_flight"] == 0
 
     asyncio.run(scenario())
+
+
+def test_sustained_measurement_window_excludes_request_drain_time():
+    module = loadgen_module()
+
+    async def scenario():
+        async def handler(_request):
+            await asyncio.sleep(0.12)
+            return web.json_response({"ok": True})
+
+        app_runner, url = await start_test_server(handler)
+        try:
+            config = module.LoadConfig(
+                url, 10, 2, 2, "drain-test", think_time_min=0.001, think_time_max=0.001
+            )
+            async with module.LoadGenerator(config) as load:
+                summary = await load.run_sustained(0.03)
+            assert 0.025 <= summary["duration_seconds"] < 0.08
+            assert summary["completed"] > 0
+        finally:
+            await app_runner.cleanup()
+
+    asyncio.run(scenario())

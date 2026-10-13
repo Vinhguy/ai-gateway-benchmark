@@ -44,12 +44,13 @@
 
 ### Task 2: Prepare the capped Linux gateway VM and server stack
 
-**Files:** `server/compose.yaml`, `server/litellm/config.yaml`, `server/scripts/configure-bifrost.sh`, `server/scripts/guard-server.sh`, `server/scripts/select-gateway.sh`, `server/windows/Watch-BenchmarkVm.ps1`, `server/tests/ServerConfig.Tests.ps1`, `.gitmodules`, pinned `upstream-benchmarking` submodule.
+**Files:** `server/compose.yaml`, `server/litellm/config.yaml`, `server/scripts/configure-bifrost.sh`, `server/scripts/guard-server.sh`, `server/scripts/select-gateway.sh`, `server/windows/Test-BenchmarkVm.ps1`, `server/windows/Watch-BenchmarkVm.ps1`, `server/tests/ServerConfig.Tests.ps1`, `.gitmodules`, pinned `upstream-benchmarking` submodule.
 
 **Interfaces:** Bifrost `http://<server-private-ip>:8080/v1/chat/completions`; LiteLLM `http://<server-private-ip>:4000/v1/chat/completions`; mocker `http://mocker:8000`; public model `openai/gpt-4o-mini`.
 
 - [x] Write tests first for guest/container memory and CPU limits, shared URL/model, disabled retries, selector validation, stop-before-switch, and low-memory refusal. Run them and observe expected failures before implementation.
 - [x] Document Hyper-V and Linux VM prerequisites; cap VM memory at 8 GB and vCPU count at 9. Do not install Docker Desktop on Windows Server.
+- [x] Add a preflight script that verifies actual VM memory/vCPU caps, firmware virtualization, and host free RAM.
 - [x] Add the official mocker repo as a submodule and pin resolved commit `2c416fb234bf4abac25cf61f4470fc2528362afd`.
 - [x] Define mocker at 1 GB / 1 CPU and each gateway at 6 GB / 8 CPUs. Only one gateway may be active.
 - [x] Configure both gateway routes to the same mocker and `openai/gpt-4o-mini`, with retries disabled and no real provider keys.
@@ -81,7 +82,7 @@
 
 - [x] Add report validity tests: low-memory abort, memory-cap event, generator saturation, and dropped work mark a run invalid.
 - [x] Document the direct-mocker baseline, gateway order, sustained trials, and comparison acceptance rules. **Deferred:** actual trials require the user's Windows server and local machine.
-- [x] Enforce 99.9% success, zero drops, resource limits, version metadata, and report p95 drift for comparison acceptance.
+- [x] Enforce complete workload shape, all three resource evidence sources, 99.9% success, zero drops, resource limits, version metadata, and p95 drift for comparison acceptance.
 - [x] Keep raw result JSON and CSV out of Git; no aggregate trial report exists yet.
 - [ ] Perform a fresh whole-workspace review and resolve any critical/important findings.
 - [ ] Copy into `C:\code\vnm\ai-gateway-benchmark`, create the public GitHub repository, and push branch `benchmark-setup` (user requested publication).

@@ -39,10 +39,11 @@ For LiteLLM use port `4000` and `-Gateway litellm`. Run gateways sequentially. T
 .venv\Scripts\python .\report.py ..\results\$id.json `
   --client-resources ..\results\$id-client-resources.csv `
   --server-resources ..\server\results\$id-server-resources.csv `
+  --server-host-resources ..\server\results\$id-windows-host-resources.csv `
   --abort-event ..\results\$id-abort.json
 ```
 
-The validator writes `*-validation.json` and exits nonzero if success is below 99.9%, work was dropped, resource thresholds were crossed, or required pin metadata is missing. Result JSON records gateway versions and the checked out mocker submodule commit. Direct-mocker runs are useful for measuring client overhead, not gateway comparison.
+The validator writes `*-validation.json` and exits nonzero if workload shape is incomplete, resource evidence is missing, success is below 99.9%, work was dropped, resource thresholds were crossed, sustained p95 drift is 20% or higher, or required pin metadata is missing. Result JSON records gateway versions and the checked out mocker submodule commit. Direct-mocker runs are useful for measuring client overhead, not gateway comparison.
 
 ## Documents
 

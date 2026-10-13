@@ -6,6 +6,28 @@ Run the gateway stack inside the capped Linux VM on the Windows server. Both phy
 
 The server needs a Hyper-V-capable Windows edition, firmware virtualization enabled, and an available private virtual switch. Use the Xeon Gold 6130 server's capacity to assign at most 9 vCPUs to the VM. Allocate 8 GB RAM maximum to the Linux VM; within it, the mocker is limited to 1 GB and the selected gateway to 6 GB. Keep about 1 GB for the guest OS. Do not install Docker Desktop on Windows Server.
 
+For a fresh clone, initialize the pinned mocker source:
+
+```powershell
+git submodule update --init --recursive
+```
+
+Configure the existing benchmark VM from an elevated PowerShell window while it is off. Set startup memory to 6 GB and maximum memory to 8 GB, and set no more than 9 vCPUs:
+
+```powershell
+Set-VM -Name 'AI-Benchmark' -DynamicMemoryEnabled $true `
+  -MemoryStartupBytes 6GB -MemoryMinimumBytes 4GB -MemoryMaximumBytes 8GB
+Set-VMProcessor -VMName 'AI-Benchmark' -Count 9
+```
+
+Before every run, verify the VM's maximum memory, vCPU count, host available RAM, and firmware virtualization:
+
+```powershell
+.\windows\Test-BenchmarkVm.ps1 -VmName 'AI-Benchmark'
+```
+
+The preflight fails if the VM exceeds 8 GB/9 vCPU, firmware virtualization is unavailable, or host available RAM is below 2 GiB.
+
 Install a supported Linux distribution in the VM and Docker Engine/Compose v2. Give it a private IP reachable from the load-generator Windows machine. On the Windows firewall and any network firewall, allow TCP 8080 (Bifrost) or TCP 4000 (LiteLLM) only from the load-generator IP. Do not publish port 8000; the mocker is reachable only inside Compose.
 
 ## Configure and start

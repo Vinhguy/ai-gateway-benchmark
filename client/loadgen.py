@@ -247,6 +247,9 @@ class LoadGenerator:
             self.metrics.record_admission_delay(admission_ms)
             self.metrics.begin_request()
             started = time.perf_counter()
+            request_elapsed = None
+            if self._sustained_started_at is not None:
+                request_elapsed = started - self._sustained_started_at
             succeeded = False
             network_error = False
             try:
@@ -264,9 +267,8 @@ class LoadGenerator:
             finally:
                 latency_ms = (time.perf_counter() - started) * 1000
                 time_window = None
-                if self._sustained_started_at is not None and self._sustained_split_seconds is not None:
-                    elapsed = time.perf_counter() - self._sustained_started_at
-                    time_window = "first_half" if elapsed <= self._sustained_split_seconds else "final_half"
+                if request_elapsed is not None and self._sustained_split_seconds is not None:
+                    time_window = "first_half" if request_elapsed <= self._sustained_split_seconds else "final_half"
                 self.metrics.end_request(
                     latency_ms=latency_ms,
                     succeeded=succeeded,
@@ -292,8 +294,8 @@ class LoadGenerator:
         if not math.isfinite(duration_seconds) or duration_seconds <= 0:
             raise ValueError("duration_seconds must be positive")
         stop_event = asyncio.Event()
-        loop_started = time.perf_counter()
-        self._sustained_started_at = loop_started
+        measurement_started = time.perf_counter()
+        self._sustained_started_at = measurement_started
         self._sustained_split_seconds = duration_seconds / 2
 
         async def user_loop(worker_id: int) -> None:
@@ -311,11 +313,20 @@ class LoadGenerator:
 
         workers = [asyncio.create_task(user_loop(worker_id)) for worker_id in range(self.config.vu_count)]
         try:
-            await asyncio.sleep(duration_seconds)
+            measurement_deadline = measurement_started + duration_seconds
+            while True:
+                remaining = measurement_deadline - time.perf_counter()
+                if remaining <= 0:
+                    break
+                # Loop timer clocks can have coarse resolution on Windows; recheck against
+                # the same high-resolution clock used for reported duration/RPS.
+                await asyncio.sleep(min(remaining, 1.0))
         finally:
+            measurement_ended = time.perf_counter()
             stop_event.set()
             await asyncio.gather(*workers)
-        return self.metrics.summary(profile="sustained", duration_seconds=time.perf_counter() - loop_started)
+        # Drain in-flight requests for clean shutdown, but do not add that drain time to the hold window.
+        return self.metrics.summary(profile="sustained", duration_seconds=measurement_ended - measurement_started)
 
 
 def write_result(summary: dict[str, Any], run_id: str, output_path: Path) -> None:

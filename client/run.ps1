@@ -50,7 +50,9 @@ if (-not (Test-Path $python)) {
 $resultsDir = Join-Path (Split-Path -Parent $PSScriptRoot) 'results'
 New-Item -ItemType Directory -Force -Path $resultsDir | Out-Null
 $outputPath = Join-Path $resultsDir "$RunId.json"
+$abortPath = Join-Path $resultsDir "$RunId-abort.json"
 $resourcePath = Join-Path $resultsDir "$RunId-client-resources.csv"
+Remove-Item -LiteralPath $abortPath -Force -ErrorAction SilentlyContinue
 [System.IO.File]::WriteAllText(
     $resourcePath,
     'timestamp_utc,host_available_mb,process_working_set_mb,process_private_mb,cpu_cores_used' + [Environment]::NewLine,
@@ -95,7 +97,7 @@ while (-not $process.HasExited) {
             timestamp_utc = [DateTime]::UtcNow.ToString('o')
         }
         [System.IO.File]::WriteAllText(
-            (Join-Path $resultsDir "$RunId-abort.json"),
+            $abortPath,
             ($abortReport | ConvertTo-Json -Depth 4) + [Environment]::NewLine,
             [System.Text.Encoding]::UTF8
         )
@@ -118,6 +120,18 @@ while (-not $process.HasExited) {
 
 $process.WaitForExit()
 if ($process.ExitCode -ne 0) {
+    $abortReport = [ordered]@{
+        run_id = $RunId
+        valid = $false
+        event = 'load_generator_exit_nonzero'
+        process_exit_code = $process.ExitCode
+        timestamp_utc = [DateTime]::UtcNow.ToString('o')
+    }
+    [System.IO.File]::WriteAllText(
+        $abortPath,
+        ($abortReport | ConvertTo-Json -Depth 4) + [Environment]::NewLine,
+        [System.Text.Encoding]::UTF8
+    )
     throw "Load generator exited with code $($process.ExitCode). See $outputPath and console output."
 }
 Write-Host "Run complete: $outputPath"

@@ -15,9 +15,38 @@ Both physical hosts run Windows. The local Windows host runs the Python load gen
 
 Each host has 16 GB RAM. Reserve 5 GB for other work, keep benchmark resources at or below 8 GB, and maintain the 2 GB available-memory abort threshold. Do not raise caps to make an invalid run pass.
 
+## Run the client
+
+Install Python 3.12 on the local Windows machine, then from `client/`:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\python -m pip install -e ".[test]"
+```
+
+Run a synchronized 1,000 request burst against one gateway (replace the private server IP):
+
+```powershell
+$id = "bifrost-burst-$(Get-Date -Format yyyyMMdd-HHmmss)"
+.\run.ps1 -TargetUrl "http://192.168.1.50:8080/v1/chat/completions" `
+  -Gateway bifrost -VuCount 5000 -MaxInFlight 1000 -Profile burst `
+  -BurstCount 1000 -RunId $id
+```
+
+For LiteLLM use port `4000` and `-Gateway litellm`. Run gateways sequentially. The sustained profile defaults to 10 minutes; use `-Profile sustained -VuCount 5000 -MaxInFlight 1000`. Each run writes JSON plus client resource CSV under `results/`. The server's `sample-resources.sh` writes a server CSV with the same run ID. Validate the run before comparing:
+
+```powershell
+.venv\Scripts\python .\report.py ..\results\$id.json `
+  --client-resources ..\results\$id-client-resources.csv `
+  --server-resources ..\server\results\$id-server-resources.csv `
+  --abort-event ..\results\$id-abort.json
+```
+
+The validator writes `*-validation.json` and exits nonzero if success is below 99.9%, work was dropped, resource thresholds were crossed, or required pin metadata is missing. Result JSON records gateway versions and the checked out mocker submodule commit. Direct-mocker runs are useful for measuring client overhead, not gateway comparison.
+
 ## Documents
 
 - [Design spec](docs/2026-10-13-ai-gateway-benchmark-design.md)
 - [Implementation plan](docs/2026-10-13-bifrost-litellm-latency-benchmark.md)
 
-The scripts and gateway stack will be added in the implementation tasks. The operator must configure the server's private IP locally; never commit credentials or `.env` files. Raw run JSON is ignored by Git.
+The operator must configure the server's private IP locally; never commit credentials or `.env` files. Raw run JSON and CSV resource traces are ignored by Git.

@@ -19,6 +19,7 @@ Both the local load-generator machine and the server run Windows. A native Windo
 Each host has 16 GB RAM, with 5 GB reserved for other tasks. Keep the benchmark workload under 8 GB aggregate, leaving about 3 GB margin:
 
 - Server: Linux VM maximum 8 GB RAM. Inside it, the selected gateway has a 6 GB hard limit and 8 CPU limit; the mock provider has a 1 GB hard limit and 1 CPU limit, leaving about 1 GB for Linux overhead. Gateways run sequentially.
+- The Windows server host monitor checks physical available RAM and powers off the benchmark VM below 2 GiB; a separate Linux guest guard stops the gateway below the same threshold inside the VM.
 - Local Windows generator: run the native async client in a Windows Job Object capped at 8 GB and 8 CPUs. The script itself should stay far below that ceiling; stop the run if available host RAM falls below 2 GB.
 - The server guard monitors available memory and stops the active gateway if Linux `MemAvailable` falls below 2 GiB. VM and process limits remain in force regardless of the monitor.
 

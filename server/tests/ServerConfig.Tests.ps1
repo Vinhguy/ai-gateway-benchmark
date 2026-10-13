@@ -37,4 +37,37 @@ Describe 'Server gateway benchmark configuration' {
         $guard | Should Match 'MemAvailable'
         $guard | Should Match 'stop "\$gateway"'
     }
+
+    It 'includes the Windows host memory guard' {
+        (Test-Path (Join-Path $repoRoot 'windows\Watch-BenchmarkVm.ps1')) | Should Be $true
+    }
+
+    It 'powers off the benchmark VM when Windows host memory is below 2 GiB' {
+        $hostGuard = Join-Path $repoRoot 'windows\Watch-BenchmarkVm.ps1'
+        . $hostGuard
+        $stoppedVms = New-Object System.Collections.Generic.List[string]
+        $stopVm = { param($name) $stoppedVms.Add($name) }.GetNewClosure()
+
+        $safe = Invoke-BenchmarkVmMemoryGuard -VmName 'AI-Benchmark' `
+            -AvailableMemoryReader { 1000000 } `
+            -VmStateReader { param($name) 'Running' } `
+            -VmStopper $stopVm
+        $safe | Should Be $false
+        $stoppedVms.Count | Should Be 1
+        $stoppedVms[0] | Should Be 'AI-Benchmark'
+    }
+
+    It 'leaves the benchmark VM running when Windows host memory is safe' {
+        $hostGuard = Join-Path $repoRoot 'windows\Watch-BenchmarkVm.ps1'
+        . $hostGuard
+        $stoppedVms = New-Object System.Collections.Generic.List[string]
+        $stopVm = { param($name) $stoppedVms.Add($name) }.GetNewClosure()
+
+        $safe = Invoke-BenchmarkVmMemoryGuard -VmName 'AI-Benchmark' `
+            -AvailableMemoryReader { 4000000 } `
+            -VmStateReader { param($name) 'Running' } `
+            -VmStopper $stopVm
+        $safe | Should Be $true
+        $stoppedVms.Count | Should Be 0
+    }
 }

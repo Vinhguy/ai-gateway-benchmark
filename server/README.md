@@ -20,7 +20,8 @@ Install a supported Linux distribution in the VM and Docker Engine/Compose v2. G
    ./scripts/select-gateway.sh litellm
    ```
 
-4. In a second terminal, run `./scripts/guard-server.sh monitor`. It stops the active gateway if guest `MemAvailable` falls below 2 GiB. Stop this monitor with Ctrl+C after the run.
-5. From the local Windows machine, target `http://<server-private-ip>:8080/v1/chat/completions` or port 4000 for LiteLLM.
+4. In a second terminal inside Linux, run `./scripts/guard-server.sh monitor`. It stops the active gateway if guest `MemAvailable` falls below 2 GiB. In a PowerShell terminal on the Windows server, run `server/windows/Watch-BenchmarkVm.ps1 -VmName <vm-name> -RunId <run-id>`; it samples physical host RAM and powers off the benchmark VM if host available memory falls below 2 GiB.
+5. In another Linux terminal, run `./scripts/sample-resources.sh <run-id>` to record guest RAM and container CPU/RAM to a CSV file.
+6. From the local Windows machine, target `http://<server-private-ip>:8080/v1/chat/completions` or port 4000 for LiteLLM.
 
 The selector removes any previous gateway container before starting the requested one. Do not bypass it with manual `docker compose up` commands. Results are comparable only when both gateways use the same Compose and mocker versions, limits, and load profile.

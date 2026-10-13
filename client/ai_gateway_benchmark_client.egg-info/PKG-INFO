@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: ai-gateway-benchmark-client
+Version: 0.1.0
+Summary: Direct asynchronous HTTP load generator for AI gateway benchmarks
+Requires-Python: <3.13,>=3.12
+Requires-Dist: aiohttp==3.12.15
+Provides-Extra: test
+Requires-Dist: pytest<10,>=8.3; extra == "test"

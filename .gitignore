@@ -7,7 +7,10 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 results/*.json
+results/*.csv
 !results/.gitkeep
+**/results/*.json
+**/results/*.csv
 *.log
 *.tmp
 .test-tmp/

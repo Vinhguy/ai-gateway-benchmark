@@ -1,0 +1,4 @@
+aiohttp==3.12.15
+
+[test]
+pytest<10,>=8.3

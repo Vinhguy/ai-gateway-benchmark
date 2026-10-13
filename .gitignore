@@ -16,3 +16,6 @@ results/*.csv
 .test-tmp/
 .server-test-tmp.*/
 server/.state/
+
+client/*.egg-info/
+client/pip-*/

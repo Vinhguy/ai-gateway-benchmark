@@ -10,3 +10,6 @@ results/*.json
 !results/.gitkeep
 *.log
 *.tmp
+.test-tmp/
+.server-test-tmp.*/
+server/.state/

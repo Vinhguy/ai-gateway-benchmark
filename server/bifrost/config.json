@@ -1,0 +1,28 @@
+{
+  "$schema": "https://www.getbifrost.ai/schema",
+  "encryption_key": "env.BIFROST_ENCRYPTION_KEY",
+  "client": {
+    "drop_excess_requests": false,
+    "enable_logging": false
+  },
+  "providers": {
+    "openai": {
+      "keys": [
+        {
+          "name": "mock-provider",
+          "value": "benchmark-mock-key",
+          "models": ["*"],
+          "weight": 1.0
+        }
+      ],
+      "network_config": {
+        "base_url": "http://mocker:8000",
+        "allow_private_network": true,
+        "max_retries": 0
+      }
+    }
+  },
+  "config_store": {
+    "enabled": false
+  }
+}

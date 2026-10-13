@@ -1,0 +1,51 @@
+name: ai-gateway-benchmark
+
+services:
+  mocker:
+    build:
+      context: ../upstream-benchmarking/mocker
+    image: ai-gateway-benchmark/mocker:2c416fb
+    command: ["./mocker", "-host", "0.0.0.0", "-port", "8000", "-latency", "0"]
+    mem_limit: 1g
+    cpus: 1.0
+    restart: unless-stopped
+    networks: [benchmark]
+
+  bifrost:
+    image: maximhq/bifrost:v2.2.6
+    profiles: [bifrost]
+    environment:
+      APP_HOST: 0.0.0.0
+      APP_PORT: "8080"
+      BIFROST_ENCRYPTION_KEY: ${BIFROST_ENCRYPTION_KEY:?copy .env.example to .env}
+      OPENAI_API_KEY: benchmark-mock-key
+    volumes:
+      - ./bifrost/config.json:/app/data/config.json:ro
+    ports:
+      - "8080:8080"
+    mem_limit: 6g
+    cpus: 8.0
+    depends_on: [mocker]
+    restart: unless-stopped
+    networks: [benchmark]
+
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.105.0
+    profiles: [litellm]
+    command: ["--config", "/app/config.yaml", "--host", "0.0.0.0", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?copy .env.example to .env}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?copy .env.example to .env}
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+    ports:
+      - "4000:4000"
+    mem_limit: 6g
+    cpus: 8.0
+    depends_on: [mocker]
+    restart: unless-stopped
+    networks: [benchmark]
+
+networks:
+  benchmark:
+    driver: bridge

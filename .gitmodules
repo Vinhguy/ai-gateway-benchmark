@@ -1,0 +1,3 @@
+[submodule "upstream-benchmarking"]
+	path = upstream-benchmarking
+	url = https://github.com/maximhq/bifrost-benchmarking.git

@@ -47,6 +47,11 @@ For LiteLLM use port `4000` and `-Gateway litellm`. Run gateways sequentially. T
 
 The validator writes `*-validation.json` and exits nonzero if workload shape is incomplete, resource evidence is missing, success is below 99.9%, work was dropped, resource thresholds were crossed, sustained p95 drift is 20% or higher, or required pin metadata is missing. Result JSON records gateway versions and the checked out mocker submodule commit. Direct-mocker runs are useful for measuring client overhead, not gateway comparison.
 
+## Run guides
+
+- [Local Windows guide](docs/huong-dan-local.md)
+- [Server AI installation runbook](docs/huong-dan-server-ai.md)
+
 ## Documents
 
 - [Design spec](docs/2026-10-13-ai-gateway-benchmark-design.md)
